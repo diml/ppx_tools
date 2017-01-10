@@ -15,7 +15,9 @@ module Main : sig end = struct
   open Ast_helper
   open Ast_convenience
 
-  let selfcall ?(this = "this") m args = app (Exp.send (evar this) m) args
+  let mkstr s = { txt = s; loc = !Ast_helper.default_loc }
+
+  let selfcall ?(this = "this") m args = app (Exp.send (evar this) (mkstr m)) args
 
   (*************************************************************************)
 
@@ -38,12 +40,12 @@ module Main : sig end = struct
 
   let existential_method =
     Cf.(method_ (mknoloc "existential") Public
-          (virtual_ Typ.(poly ["a"] (arrow Nolabel (var "a") (var "res"))))
+          (virtual_ Typ.(poly [mkstr "a"] (arrow Nolabel (var "a") (var "res"))))
        )
 
   let arrow_method =
     Cf.(method_ (mknoloc "arrow") Public
-          (virtual_ Typ.(poly ["a"] (arrow Nolabel (var "a") (var "res"))))
+          (virtual_ Typ.(poly [mkstr "a"] (arrow Nolabel (var "a") (var "res"))))
        )
 
   let rec gen ty =
@@ -73,12 +75,12 @@ module Main : sig end = struct
           tyargs (make_result_t tyargs)
       in
       let tyargs = List.map (fun t -> Typ.var t) params in
-      let t = Typ.poly params (make_t tyargs) in
+      let t = Typ.poly (List.map mkstr params) (make_t tyargs) in
       let concrete e =
         let e = List.fold_right (fun x e -> lam x e) (List.map (fun x -> pvar x) params) e in
         let tyargs = List.map (fun t -> Typ.constr (lid t) []) params in
         let e = Exp.constraint_ e (make_t tyargs) in
-        let e = List.fold_right (fun x e -> Exp.newtype x e) params e in
+        let e = List.fold_right (fun x e -> Exp.newtype (mkstr x) e) params e in
         let body = Exp.poly e (Some t) in
         meths := Cf.(method_ (mknoloc (print_fun ty)) Public (concrete Fresh body)) :: !meths
       in
